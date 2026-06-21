@@ -217,6 +217,7 @@ class GreedySearchAgent(SearchAgent):
             init_greedy_worker(*init_args)
             results = [run_greedy_trial(i) for i in tqdm(range(n_trials))]
 
+        self.model.to(utils.get_device())
         print("Aggregating results from all worker processes...")
         for trial_patterns, trial_counts in results:
             for size, scored_patterns in trial_patterns.items():
