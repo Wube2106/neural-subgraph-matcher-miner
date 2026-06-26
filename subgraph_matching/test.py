@@ -142,9 +142,11 @@ def validation(args, model, test_pts, logger, batch_n, epoch, verbose=False):
                     )
                 )
                 torch.save(model.state_dict(), args.model_path)
+                utils.save_model_metadata(args, args.model_path)
         else:
             print("Saving {}".format(args.model_path))
             torch.save(model.state_dict(), args.model_path)
+            utils.save_model_metadata(args, args.model_path)
 
     if verbose:
         conf_mat_examples = defaultdict(list)
