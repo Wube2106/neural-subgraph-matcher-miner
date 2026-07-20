@@ -22,93 +22,68 @@ jobs:
 
       - name: Create output directories
         run: |
-          mkdir -p ${{ github.workspace }}/plots/cluster
           mkdir -p ${{ github.workspace }}/results
-          chmod -R 777 ${{ github.workspace }}/plots
           chmod -R 777 ${{ github.workspace }}/results
-
-      - name: Verify inputs
-        run: |
-          test -f ${{ github.workspace }}/ca-HepTh.txt.gz
-          test -f ${{ github.workspace }}/ckpt/model.pt
 
       - name: Convert dataset
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            decoder-image:latest \
+          docker run --rm -v ${{ github.workspace }}:/app decoder-image:latest \
             python convert_hepth.py
 
-      - name: Run decoder - Greedy
+      - name: Greedy - n_trials 50
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            -e PYTHONUNBUFFERED=1 \
-            decoder-image:latest \
-            bash -c "
-              python -m subgraph_mining.decoder \
-                --dataset=ca_hepth.pkl \
-                --graph_type=undirected \
-                --model_path=ckpt/model.pt \
-                --node_anchored \
-                --search_strategy=greedy \
-                --n_trials=100 \
-                --n_neighborhoods=100 \
-                --out_path=results/ca_hepth_greedy.pkl \
-                2>&1 | tee ca_hepth_greedy.log
-            "
+          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
+            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
+              --model_path=ckpt/model.pt --node_anchored --search_strategy=greedy \
+              --min_pattern_size=3 --max_pattern_size=5 --n_trials=50 --n_neighborhoods=100 \
+              --out_path=results/greedy_t50.pkl 2>&1 | tee greedy_t50.log"
 
-      - name: Run decoder - Beam
+      - name: Greedy - n_trials 100
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            -e PYTHONUNBUFFERED=1 \
-            decoder-image:latest \
-            bash -c "
-              python -m subgraph_mining.decoder \
-                --dataset=ca_hepth.pkl \
-                --graph_type=undirected \
-                --model_path=ckpt/model.pt \
-                --node_anchored \
-                --search_strategy=beam \
-                --beam_width=5 \
-                --n_trials=100 \
-                --n_neighborhoods=100 \
-                --out_path=results/ca_hepth_beam.pkl \
-                2>&1 | tee ca_hepth_beam.log
-            "
+          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
+            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
+              --model_path=ckpt/model.pt --node_anchored --search_strategy=greedy \
+              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
+              --out_path=results/greedy_t100.pkl 2>&1 | tee greedy_t100.log"
 
-      - name: Run decoder - MCTS
+      - name: Beam - width 5
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            -e PYTHONUNBUFFERED=1 \
-            decoder-image:latest \
-            bash -c "
-              python -m subgraph_mining.decoder \
-                --dataset=ca_hepth.pkl \
-                --graph_type=undirected \
-                --model_path=ckpt/model.pt \
-                --node_anchored \
-                --search_strategy=mcts \
-                --n_trials=100 \
-                --n_neighborhoods=100 \
-                --out_path=results/ca_hepth_mcts.pkl \
-                2>&1 | tee ca_hepth_mcts.log
-            "
+          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
+            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
+              --model_path=ckpt/model.pt --node_anchored --search_strategy=beam --beam_width=5 \
+              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
+              --out_path=results/beam_w5.pkl 2>&1 | tee beam_w5.log"
 
-      - name: Check generated files
+      - name: Beam - width 10
         run: |
-          ls -R plots/ || echo "No plots directory found"
-          ls -R results/ || echo "No results directory found"
+          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
+            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
+              --model_path=ckpt/model.pt --node_anchored --search_strategy=beam --beam_width=10 \
+              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
+              --out_path=results/beam_w10.pkl 2>&1 | tee beam_w10.log"
 
-      - name: Upload plots and results as artifact
+      - name: MCTS - n_trials 50
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
+            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
+              --model_path=ckpt/model.pt --node_anchored --search_strategy=mcts \
+              --min_pattern_size=3 --max_pattern_size=5 --n_trials=50 --n_neighborhoods=100 \
+              --out_path=results/mcts_t50.pkl 2>&1 | tee mcts_t50.log"
+
+      - name: MCTS - n_trials 100
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
+            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
+              --model_path=ckpt/model.pt --node_anchored --search_strategy=mcts \
+              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
+              --out_path=results/mcts_t100.pkl 2>&1 | tee mcts_t100.log"
+
+      - name: Upload logs and results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ca-hepth-results
+          name: sweep-results
           path: |
-            plots/
             results/
             *.log
           retention-days: 7
