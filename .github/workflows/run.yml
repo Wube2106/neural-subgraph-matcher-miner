@@ -49,7 +49,9 @@ jobs:
       - name: Create output directories
         run: |
           mkdir -p ${{ github.workspace }}/results
+          mkdir -p ${{ github.workspace }}/plots/cluster
           chmod -R 777 ${{ github.workspace }}/results
+          chmod -R 777 ${{ github.workspace }}/plots
 
       - name: Convert dataset
         run: |
@@ -80,6 +82,7 @@ jobs:
           name: ${{ inputs.run_label }}
           path: |
             results/
+            plots/
             *.log
           retention-days: 7
           if-no-files-found: warn
