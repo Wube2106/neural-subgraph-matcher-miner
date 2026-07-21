@@ -2,6 +2,32 @@ name: Run Decoder
 
 on:
   workflow_dispatch:
+    inputs:
+      strategy:
+        description: "Search strategy"
+        required: true
+        default: "greedy"
+        type: choice
+        options:
+          - greedy
+          - beam
+          - mcts
+      n_trials:
+        description: "Number of trials"
+        required: true
+        default: "100"
+      n_neighborhoods:
+        description: "Number of neighborhoods"
+        required: true
+        default: "100"
+      beam_width:
+        description: "Beam width (only used if strategy = beam)"
+        required: false
+        default: "5"
+      run_label:
+        description: "Short label for this run (used in file/artifact names, e.g. greedy_t50)"
+        required: true
+        default: "greedy_t100_n100"
 
 jobs:
   run-decoder:
@@ -30,59 +56,28 @@ jobs:
           docker run --rm -v ${{ github.workspace }}:/app decoder-image:latest \
             python convert_hepth.py
 
-      - name: Greedy - n_trials 50
+      - name: Run decoder
         run: |
           docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
-            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
-              --model_path=ckpt/model.pt --node_anchored --search_strategy=greedy \
-              --min_pattern_size=3 --max_pattern_size=5 --n_trials=50 --n_neighborhoods=100 \
-              --out_path=results/greedy_t50.pkl 2>&1 | tee greedy_t50.log"
-
-      - name: Greedy - n_trials 100
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
-            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
-              --model_path=ckpt/model.pt --node_anchored --search_strategy=greedy \
-              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
-              --out_path=results/greedy_t100.pkl 2>&1 | tee greedy_t100.log"
-
-      - name: Beam - width 5
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
-            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
-              --model_path=ckpt/model.pt --node_anchored --search_strategy=beam --beam_width=5 \
-              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
-              --out_path=results/beam_w5.pkl 2>&1 | tee beam_w5.log"
-
-      - name: Beam - width 10
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
-            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
-              --model_path=ckpt/model.pt --node_anchored --search_strategy=beam --beam_width=10 \
-              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
-              --out_path=results/beam_w10.pkl 2>&1 | tee beam_w10.log"
-
-      - name: MCTS - n_trials 50
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
-            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
-              --model_path=ckpt/model.pt --node_anchored --search_strategy=mcts \
-              --min_pattern_size=3 --max_pattern_size=5 --n_trials=50 --n_neighborhoods=100 \
-              --out_path=results/mcts_t50.pkl 2>&1 | tee mcts_t50.log"
-
-      - name: MCTS - n_trials 100
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
-            python -m subgraph_mining.decoder --dataset=ca_hepth.pkl --graph_type=undirected \
-              --model_path=ckpt/model.pt --node_anchored --search_strategy=mcts \
-              --min_pattern_size=3 --max_pattern_size=5 --n_trials=100 --n_neighborhoods=100 \
-              --out_path=results/mcts_t100.pkl 2>&1 | tee mcts_t100.log"
+            python -m subgraph_mining.decoder \
+              --dataset=ca_hepth.pkl \
+              --graph_type=undirected \
+              --model_path=ckpt/model.pt \
+              --node_anchored \
+              --search_strategy=${{ inputs.strategy }} \
+              --beam_width=${{ inputs.beam_width }} \
+              --min_pattern_size=3 \
+              --max_pattern_size=5 \
+              --n_trials=${{ inputs.n_trials }} \
+              --n_neighborhoods=${{ inputs.n_neighborhoods }} \
+              --out_path=results/${{ inputs.run_label }}.pkl \
+              2>&1 | tee ${{ inputs.run_label }}.log"
 
       - name: Upload logs and results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sweep-results
+          name: ${{ inputs.run_label }}
           path: |
             results/
             *.log
