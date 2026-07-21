@@ -24,6 +24,14 @@ on:
         description: "Beam width (only used if strategy = beam)"
         required: false
         default: "5"
+      dataset:
+        description: "Dataset to mine"
+        required: true
+        default: "ca_hepth"
+        type: choice
+        options:
+          - ca_hepth
+          - metta
       run_label:
         description: "Short label for this run (used in file/artifact names, e.g. greedy_t50)"
         required: true
@@ -54,6 +62,7 @@ jobs:
           chmod -R 777 ${{ github.workspace }}/plots
 
       - name: Convert dataset
+        if: inputs.dataset == 'ca_hepth'
         run: |
           docker run --rm -v ${{ github.workspace }}:/app decoder-image:latest \
             python convert_hepth.py
@@ -62,7 +71,7 @@ jobs:
         run: |
           docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
             python -m subgraph_mining.decoder \
-              --dataset=ca_hepth.pkl \
+              --dataset=${{ inputs.dataset }}.pkl \
               --graph_type=undirected \
               --model_path=ckpt/model.pt \
               --node_anchored \
