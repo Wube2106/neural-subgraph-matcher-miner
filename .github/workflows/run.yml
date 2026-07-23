@@ -1,5 +1,4 @@
 name: Run Decoder
-
 on:
   workflow_dispatch:
     inputs:
@@ -20,6 +19,14 @@ on:
         description: "Number of neighborhoods"
         required: true
         default: "100"
+      min_neighborhood_size:
+        description: "Minimum neighborhood size"
+        required: true
+        default: "2"
+      max_neighborhood_size:
+        description: "Maximum neighborhood size"
+        required: true
+        default: "3"
       beam_width:
         description: "Beam width (only used if strategy = beam)"
         required: false
@@ -36,37 +43,31 @@ on:
         description: "Short label for this run (used in file/artifact names, e.g. greedy_t50)"
         required: true
         default: "greedy_t100_n100"
-
 jobs:
   run-decoder:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
       - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           load: true
           tags: decoder-image:latest
-
       - name: Create output directories
         run: |
           mkdir -p ${{ github.workspace }}/results
           mkdir -p ${{ github.workspace }}/plots/cluster
           chmod -R 777 ${{ github.workspace }}/results
           chmod -R 777 ${{ github.workspace }}/plots
-
       - name: Convert dataset
         if: inputs.dataset == 'ca_hepth'
         run: |
           docker run --rm -v ${{ github.workspace }}:/app decoder-image:latest \
             python convert_hepth.py
-
       - name: Run decoder
         run: |
           docker run --rm -v ${{ github.workspace }}:/app -e PYTHONUNBUFFERED=1 decoder-image:latest bash -c "
@@ -79,11 +80,12 @@ jobs:
               --beam_width=${{ inputs.beam_width }} \
               --min_pattern_size=3 \
               --max_pattern_size=5 \
+              --min_neighborhood_size=${{ inputs.min_neighborhood_size }} \
+              --max_neighborhood_size=${{ inputs.max_neighborhood_size }} \
               --n_trials=${{ inputs.n_trials }} \
               --n_neighborhoods=${{ inputs.n_neighborhoods }} \
               --out_path=results/${{ inputs.run_label }}.pkl \
               2>&1 | tee ${{ inputs.run_label }}.log"
-
       - name: Upload logs and results
         if: always()
         uses: actions/upload-artifact@v4
